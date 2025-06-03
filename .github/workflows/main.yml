@@ -63,9 +63,45 @@ jobs:
       - name: Build
         run: mvn -B clean package --file pom.xml
 
+# Step to upload the artifact to Exchange
+  exchange:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:    
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+     
+    - uses: s4u/maven-settings-action@v2.6.0
+      with:
+        servers: |
+          [{
+              "id": "anypoint-exchange-v3",
+              "username": "${{ secrets.ANYPOINT_USERNAME }}",
+              "password": "${{ secrets.ANYPOINT_PASSWORD }}"
+          },
+          {
+              "id": "cloudhub-deploy",
+              "username": "${{ secrets.ANYPOINT_USERNAME }}",
+              "password": "${{ secrets.ANYPOINT_PASSWORD }}"
+          },
+          {
+            "id": "exchange-repository",
+            "username": "${{ secrets.ANYPOINT_USERNAME }}",
+            "password": "${{ secrets.ANYPOINT_PASSWORD }}"
+          }
+          ]
+            
+    - name: Publish artifact to Exchange
+      run: |
+        mvn -B clean deploy --file pom.xml
 # Steps for executing the deployment against Cloudhub2.0 Anypoint Platform
   deploy:
-    needs: build
+    needs: exchange
     runs-on: ubuntu-latest
     steps:    
     - uses: actions/checkout@v3
@@ -99,5 +135,6 @@ jobs:
       env:
         AUTHOR: "Mr Bean"
       run: |
-        mvn clean deploy --file pom.xml -DmuleDeploy -Denvironment="dev" -DapplicationName="cicd-andresc" -Dmessage="Summer is commming up soon"
-        
+        mvn clean deploy --file pom.xml -DmuleDeploy -Denvironment="dev" -DapplicationName="cicd-andresc2" -Dmessage="mule and cloudhub 2.0 rocks!" 
+
+
